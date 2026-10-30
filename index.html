@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grados del gimnasio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <a href="#/" class="logo">🧗 Grados</a>
+    <a href="#/nueva" class="boton">+ Cargar vía</a>
+  </header>
+  <main id="app"></main>
+
+  <template id="t-lista">
+    <div class="filtros">
+      <input id="buscar" type="search" placeholder="Buscar por nombre, sector o color">
+      <label class="check"><input id="desmontadas" type="checkbox"> Ver desmontadas</label>
+    </div>
+    <ul id="vias" class="vias"></ul>
+  </template>
+
+  <template id="t-nueva">
+    <h1>Cargar vía</h1>
+    <form id="form-via" class="form">
+      <label>Nombre<input name="nombre" required maxlength="80" placeholder="Ej: La amarilla del techo"></label>
+      <div class="fila">
+        <label>Sector<input name="sector" maxlength="60" placeholder="Ej: Desplome"></label>
+        <label>Color de presas<input name="color" maxlength="30" placeholder="Ej: Amarillo"></label>
+      </div>
+      <label>Grado marcado<select name="grado" required></select></label>
+      <label>Descripción<textarea name="descripcion" rows="3" maxlength="1000" placeholder="Por dónde arranca, qué presas valen, etc."></textarea></label>
+      <label>Foto del inicio<input name="foto" type="file" accept="image/*" capture="environment"></label>
+      <img id="preview" class="preview" hidden alt="">
+      <p class="error" id="error"></p>
+      <button type="submit" class="boton">Guardar vía</button>
+    </form>
+  </template>
+
+  <template id="t-via">
+    <article class="detalle">
+      <img class="foto" hidden alt="Inicio de la vía">
+      <div class="cabecera">
+        <div>
+          <h1 class="nombre"></h1>
+          <p class="meta"></p>
+        </div>
+        <span class="grado grande"></span>
+      </div>
+      <p class="descripcion"></p>
+      <section class="consenso"></section>
+      <button class="boton" id="btn-encadene">✔ La encadené</button>
+      <form id="form-encadene" class="form" hidden>
+        <label>Tu nombre<input name="escalador" required maxlength="60"></label>
+        <fieldset class="estilo">
+          <legend>¿Cómo la encadenaste?</legend>
+          <label><input type="radio" name="estilo" value="top" required> De top</label>
+          <label><input type="radio" name="estilo" value="primero"> De primero</label>
+        </fieldset>
+        <label>¿Qué grado pensás que es?<select name="grado_sugerido" required></select></label>
+        <label>Comentario (opcional)<input name="comentario" maxlength="500" placeholder="Ej: el crux es mucho más duro que el resto"></label>
+        <p class="error" id="error"></p>
+        <button type="submit" class="boton">Enviar opinión</button>
+      </form>
+      <h2>Encadenes</h2>
+      <ul class="encadenes"></ul>
+      <button class="link" id="btn-activa"></button>
+    </article>
+  </template>
+
+  <script src="config.js"></script>
+  <script src="grados.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
