@@ -23,18 +23,26 @@ suelen bloquear que el script sea público o que las fotos se compartan con link
 ### 1. La planilla y el script
 
 1. Creá una planilla nueva en [sheets.new](https://sheets.new) y ponele un nombre, por ejemplo "Grados del gimnasio".
-2. Andá a **Extensiones → Apps Script**. Borrá lo que haya y pegá el contenido de `apps-script/Code.gs`. Guardá (💾).
-3. Arriba, en el desplegable de funciones, elegí `configurar` y tocá **Ejecutar**.
+2. Andá a **Extensiones → Apps Script**. Borrá lo que haya en `Código.gs` y pegá el contenido de `apps-script/Code.gs`.
+3. En **Configuración del proyecto** (⚙️, en la barra de la izquierda) marcá
+   **Mostrar el archivo de manifiesto "appsscript.json" en el editor**. Volvé al **Editor** (`< >`), abrí
+   `appsscript.json`, borrá lo que tenga y pegá el contenido de `apps-script/appsscript.json`. Guardá (💾).
+
+   Este archivo limita los permisos: el script solo puede usar **esta planilla** y, en Drive, **solo los
+   archivos que crea él mismo** (la carpeta de fotos y las fotos). No ve el resto de tu Drive ni tus otras planillas.
+4. Arriba, en el desplegable de funciones, elegí `configurar` y tocá **Ejecutar**.
    Google te va a pedir permisos:
    - Elegí tu cuenta.
    - Aparece "Google no verificó esta app": tocá **Configuración avanzada → Ir a … (no seguro)**. Es tu propio script, no hay problema.
+   - Revisá que los permisos digan "solo la hoja de cálculo en la que se instaló" y "solo los archivos
+     de Drive específicos que uses con esta app". Si te pide acceso a todo, falta el paso 3.
    - Tocá **Permitir**.
 
    Esto crea las hojas `vias` y `encadenes` y la carpeta de fotos en tu Drive.
-4. Tocá **Implementar → Nueva implementación**. En el engranaje elegí **Aplicación web** y configurá:
+5. Tocá **Implementar → Nueva implementación**. En el engranaje elegí **Aplicación web** y configurá:
    - Ejecutar como: **Yo**
    - Quién tiene acceso: **Cualquier persona**
-5. Tocá **Implementar** y copiá la URL que te da (termina en `/exec`).
+6. Tocá **Implementar** y copiá la URL que te da (termina en `/exec`).
 
 ### 2. La página
 
