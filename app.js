@@ -237,9 +237,7 @@ function vistaNueva() {
   let foto = null;
 
   form.grado.innerHTML = '<option value="">Elegí…</option>' + GRADOS.map((g) => `<option>${g}</option>`).join('');
-  document.getElementById('opciones-sector').innerHTML = SECTORES.map((s, i) =>
-    `<label><input type="radio" name="sector" value="${s}"${i === 0 ? ' required' : ''}><span>${s}</span></label>`
-  ).join('');
+  form.sector.innerHTML = '<option value="">Elegí…</option>' + SECTORES.map((s) => `<option>${s}</option>`).join('');
 
   muestras.innerHTML = COLORES.map(([nombre, , hex]) =>
     `<button type="button" class="muestra" style="--presa:${hex}" data-color="${nombre}" title="${nombre}" aria-label="${nombre}" aria-pressed="false"></button>`
