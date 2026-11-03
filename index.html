@@ -54,11 +54,11 @@
         <div class="muestras" id="muestras"></div>
         <input name="color" maxlength="30" placeholder="U otro color…" aria-label="Color de presas">
       </div>
-      <div class="fila">
-        <label>Sector<input name="sector" maxlength="60" placeholder="Ej: Desplome" list="sectores"></label>
-        <label>Grado marcado<select name="grado" required></select></label>
+      <div class="campo">
+        <span class="etiqueta">Sector</span>
+        <div class="segmentado" id="opciones-sector"></div>
       </div>
-      <datalist id="sectores"></datalist>
+      <label>Grado marcado<select name="grado" required></select></label>
       <label>Descripción<textarea name="descripcion" rows="3" maxlength="1000" placeholder="Por dónde arranca, qué presas valen, etc."></textarea></label>
       <p class="error" id="error"></p>
       <button type="submit" class="boton boton-grande">Guardar vía</button>

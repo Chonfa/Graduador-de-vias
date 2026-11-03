@@ -22,7 +22,8 @@ const COLORES = [
   ['Gris', 'gris', '#868e96'],
   ['Marrón', 'marron', '#8d5a2b'],
 ];
-const ICONO_PRESA = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 22c-2-6 2-14 9-15 6-1 12 3 11 9-1 5-5 6-8 9-3 3-10 3-12-3z"/></svg>';
+const SECTORES = ['Placa izquierda', 'Placa derecha', 'Desplome izquierdo', 'Desplome derecho'];
+const ICONO_PRESA ='<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 22c-2-6 2-14 9-15 6-1 12 3 11 9-1 5-5 6-8 9-3 3-10 3-12-3z"/></svg>';
 
 // Filtros de la lista: se mantienen al ir y volver de una vía.
 const filtro = { texto: '', sector: '', desmontadas: false };
@@ -173,11 +174,13 @@ async function vistaLista() {
   buscar.value = filtro.texto;
 
   function pintarFiltros() {
-    const sectores = [...new Set(vias.map((v) => v.sector).filter(Boolean))].sort();
+    // Los 4 sectores fijos, más cualquier otro que haya quedado cargado a mano antes.
+    const otros = [...new Set(vias.map((v) => v.sector).filter((s) => s && !SECTORES.includes(s)))].sort();
+    const sectores = [...SECTORES, ...otros];
     if (filtro.sector && !sectores.includes(filtro.sector)) filtro.sector = '';
     const boton = (valor, texto) =>
       `<button type="button" class="filtro" data-sector="${esc(valor)}" aria-pressed="${filtro.sector === valor}">${esc(texto)}</button>`;
-    filtros.innerHTML = (sectores.length ? boton('', 'Todas') + sectores.map((s) => boton(s, s)).join('') : '') +
+    filtros.innerHTML = boton('', 'Todas') + sectores.map((s) => boton(s, s)).join('') +
       `<button type="button" class="filtro secundario" data-desmontadas aria-pressed="${filtro.desmontadas}">Desmontadas</button>`;
   }
 
@@ -234,10 +237,9 @@ function vistaNueva() {
   let foto = null;
 
   form.grado.innerHTML = '<option value="">Elegí…</option>' + GRADOS.map((g) => `<option>${g}</option>`).join('');
-  if (cache) {
-    const sectores = [...new Set(cache.vias.map((v) => v.sector).filter(Boolean))].sort();
-    document.getElementById('sectores').innerHTML = sectores.map((s) => `<option value="${esc(s)}">`).join('');
-  }
+  document.getElementById('opciones-sector').innerHTML = SECTORES.map((s, i) =>
+    `<label><input type="radio" name="sector" value="${s}"${i === 0 ? ' required' : ''}><span>${s}</span></label>`
+  ).join('');
 
   muestras.innerHTML = COLORES.map(([nombre, , hex]) =>
     `<button type="button" class="muestra" style="--presa:${hex}" data-color="${nombre}" title="${nombre}" aria-label="${nombre}" aria-pressed="false"></button>`
