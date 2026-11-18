@@ -128,7 +128,24 @@ function conConsenso(via, encadenes) {
   const propios = encadenes
     .filter((e) => e.via_id === via.id)
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
-  return { ...via, encadenes: propios, ...consenso(via.grado, propios.map((e) => e.grado_sugerido)) };
+  const puntajes = propios.map((e) => Number(e.estrellas)).filter((n) => n >= 1 && n <= 5);
+  return {
+    ...via,
+    encadenes: propios,
+    ...consenso(via.grado, propios.map((e) => e.grado_sugerido)),
+    estrellas: puntajes.length ? puntajes.reduce((a, b) => a + b, 0) / puntajes.length : 0,
+    estrellas_votos: puntajes.length,
+  };
+}
+
+// Cinco estrellas pintadas hasta el valor (admite decimales, p. ej. 4,3).
+function estrellasHTML(valor) {
+  const n = String(Math.round(valor * 10) / 10).replace('.', ',');
+  return `<span class="estrellas" style="--valor:${valor}" role="img" aria-label="${n} de 5 estrellas">★★★★★</span>`;
+}
+
+function promedioEstrellas(v) {
+  return String(Math.round(v.estrellas * 10) / 10).replace('.', ',');
 }
 
 function normalizar(s) {
@@ -256,7 +273,10 @@ async function vistaLista() {
         <div class="tarjeta-info">
           <div class="tarjeta-titulo">${colorPresa(v.color) ? `<span class="punto"${estiloPresa(v.color)}></span>` : ''}${esc(v.nombre)}</div>
           ${subtitulo(v) ? `<div class="tarjeta-sub">${esc(subtitulo(v))}</div>` : ''}
-          ${veredictoHTML(v)}
+          <div class="tarjeta-pie">
+            ${veredictoHTML(v)}
+            ${v.estrellas_votos ? `<span class="puntaje-chico" aria-label="${promedioEstrellas(v)} de 5 estrellas">★ ${promedioEstrellas(v)}</span>` : ''}
+          </div>
         </div>
       </a></li>`).join('');
   }
@@ -395,6 +415,10 @@ function dibujarVia(id) {
     (/^\d/.test(cuando) ? `el ${cuando}` : cuando);
   $('.grado-hero').textContent = v.grado;
   $('.descripcion').textContent = v.descripcion;
+  $('.puntaje').hidden = !v.estrellas_votos;
+  $('.puntaje').innerHTML = v.estrellas_votos
+    ? `${estrellasHTML(v.estrellas)} <b>${promedioEstrellas(v)}</b> <span>· ${plural(v.estrellas_votos, 'voto', 'votos')}</span>`
+    : '';
 
   $('.consenso').innerHTML = v.votos ? `
     <div class="resumen ${v.veredicto}">
@@ -418,7 +442,7 @@ function dibujarVia(id) {
       <span class="avatar" style="--hue:${tono(e.escalador)}">${esc(iniciales(e.escalador))}</span>
       <div>
         <div class="encadene-nombre">${esc(e.escalador)}</div>
-        <div class="encadene-meta"><span class="estilo-pill">${e.estilo === 'top' ? 'De top' : 'De primero'}</span>${hace(e.fecha)}</div>
+        <div class="encadene-meta"><span class="estilo-pill">${e.estilo === 'top' ? 'De top' : 'De primero'}</span>${Number(e.estrellas) ? estrellasHTML(Number(e.estrellas)) : ''}${hace(e.fecha)}</div>
         ${e.comentario ? `<p>${esc(e.comentario)}</p>` : ''}
       </div>
       <span class="grado">${esc(e.grado_sugerido)}</span>
@@ -449,7 +473,24 @@ function formularioEncadene(v) {
   const chips = $('#chips-grado');
   const otro = $('#grado-otro');
   const error = $('#error');
+  const inputEstrellas = $('#estrellas-input');
   let elegido = '';
+  let estrellas = 0;
+
+  // Tocar la misma estrella otra vez borra el puntaje (es opcional).
+  inputEstrellas.innerHTML = [1, 2, 3, 4, 5].map((n) =>
+    `<button type="button" class="estrella" data-n="${n}" aria-label="${plural(n, 'estrella', 'estrellas')}" aria-pressed="false">★</button>`
+  ).join('');
+  inputEstrellas.addEventListener('click', (e) => {
+    const b = e.target.closest('.estrella');
+    if (!b) return;
+    const n = Number(b.dataset.n);
+    estrellas = estrellas === n ? 0 : n;
+    inputEstrellas.querySelectorAll('.estrella').forEach((s) => {
+      s.classList.toggle('llena', Number(s.dataset.n) <= estrellas);
+      s.setAttribute('aria-pressed', Number(s.dataset.n) === estrellas);
+    });
+  });
 
   // Botones con los 7 grados alrededor del marcado; el resto queda en el desplegable.
   const i = GRADOS.indexOf(v.grado);
@@ -498,7 +539,7 @@ function formularioEncadene(v) {
     boton.textContent = 'Enviando…';
     try {
       localStorage.setItem('escalador', valores.escalador.trim());
-      await enviar('encadenar', { ...valores, grado_sugerido: elegido, via_id: v.id });
+      await enviar('encadenar', { ...valores, grado_sugerido: elegido, estrellas: estrellas || '', via_id: v.id });
       toast('¡Gracias! Tu opinión quedó guardada');
       dibujarVia(v.id);
     } catch (err) {

@@ -322,3 +322,27 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .instalar-texto { flex: 1; margin: 0; font-size: .92rem; line-height: 1.35; }
 .instalar-cerrar { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 1.4rem; line-height: 1; cursor: pointer; }
 .instalar-cerrar:hover { background: var(--soft); }
+
+/* Puntaje con estrellas */
+:root { --estrella: #f59f00; --estrella-vacia: #d9d3c8; }
+@media (prefers-color-scheme: dark) { :root { --estrella-vacia: #4a463f; } }
+.estrellas {
+  display: inline-block; letter-spacing: 1px; line-height: 1;
+  background: linear-gradient(90deg, var(--estrella) calc(var(--valor) / 5 * 100%), var(--estrella-vacia) 0);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.puntaje { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 1.05rem; }
+.puntaje .estrellas { font-size: 1.35rem; }
+.puntaje span:not(.estrellas) { color: var(--muted); font-size: .92rem; }
+.encadene-meta .estrellas { font-size: .9rem; }
+.tarjeta-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.puntaje-chico { color: var(--estrella); font-weight: 700; font-size: .9rem; }
+.puntaje-chico::first-letter { margin-right: 2px; }
+.estrellas-input { display: flex; gap: 4px; }
+.estrella {
+  padding: 0 4px; border: 0; background: none; cursor: pointer;
+  font-size: 2.2rem; line-height: 1; color: var(--estrella-vacia);
+  transition: transform .1s, color .1s;
+}
+.estrella.llena { color: var(--estrella); }
+.estrella:active { transform: scale(.9); }

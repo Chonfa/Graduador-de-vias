@@ -11,7 +11,7 @@ const GRADOS = [
 // Las columnas nuevas van siempre al final, para no correr las que ya tiene la planilla.
 const COLUMNAS = {
   vias: ['id', 'nombre', 'sector', 'color', 'grado', 'descripcion', 'foto', 'activa', 'creada', 'armador'],
-  encadenes: ['id', 'via_id', 'escalador', 'estilo', 'grado_sugerido', 'comentario', 'fecha'],
+  encadenes: ['id', 'via_id', 'escalador', 'estilo', 'grado_sugerido', 'comentario', 'fecha', 'estrellas'],
 };
 const CARPETA_FOTOS = 'Grados del gimnasio - fotos';
 const CLAVE_CACHE = 'datos';
@@ -128,6 +128,9 @@ function encadenar(b) {
   if (!escalador) throw new Error('Falta tu nombre');
   if (!['top', 'primero'].includes(b.estilo)) throw new Error('Estilo inválido');
   if (!GRADOS.includes(b.grado_sugerido)) throw new Error('Grado inválido');
+  // Opcional: de 1 a 5, o vacío si no quiso puntuarla.
+  const estrellas = b.estrellas ? Number(b.estrellas) : '';
+  if (estrellas !== '' && ![1, 2, 3, 4, 5].includes(estrellas)) throw new Error('Puntaje inválido');
 
   // Una opinión por persona y vía: si ya opinó, se reemplaza.
   const encadenes = leer('encadenes');
@@ -142,6 +145,7 @@ function encadenar(b) {
     grado_sugerido: b.grado_sugerido,
     comentario: texto(b.comentario, 500),
     fecha: new Date().toISOString(),
+    estrellas,
   });
   const h = hoja('encadenes');
   if (i >= 0) h.getRange(i + 2, 1, 1, valores.length).setValues([valores]);
