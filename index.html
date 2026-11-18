@@ -6,6 +6,15 @@
   <meta name="theme-color" content="#1d1b18">
   <title>Graduador de vías</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 22c-2-6 2-14 9-15 6-1 12 3 11 9-1 5-5 6-8 9-3 3-10 3-12-3z' fill='%23e8590c'/%3E%3Ccircle cx='15' cy='15' r='3' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Graduador">
+  <!-- Adelanta la conexión con Google: los datos y las fotos vienen de ahí. -->
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com">
+  <link rel="preconnect" href="https://drive.google.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,6 +28,12 @@
     </a>
     <a href="#/nueva" class="boton boton-chico"><span aria-hidden="true">＋</span> Cargar vía</a>
   </header>
+  <div id="instalar" class="instalar" hidden>
+    <img src="icons/icon-192.png" alt="" width="40" height="40">
+    <p class="instalar-texto"></p>
+    <button type="button" class="boton boton-chico" id="btn-instalar" hidden>Instalar</button>
+    <button type="button" class="instalar-cerrar" id="btn-cerrar-instalar" aria-label="Cerrar">×</button>
+  </div>
   <main id="app"></main>
   <div id="toast" class="toast" role="status" hidden></div>
 
@@ -56,6 +71,8 @@
       </div>
       <label>Sector<select name="sector" required></select></label>
       <label>Grado marcado<select name="grado" required></select></label>
+      <label><span>Armada por <small>(opcional)</small></span><input name="armador" maxlength="60" list="armadores" placeholder="Quién la armó" autocomplete="off"></label>
+      <datalist id="armadores"></datalist>
       <label>Descripción<textarea name="descripcion" rows="3" maxlength="1000" placeholder="Por dónde arranca, qué presas valen, etc."></textarea></label>
       <p class="error" id="error"></p>
       <button type="submit" class="boton boton-grande">Guardar vía</button>
@@ -71,6 +88,7 @@
           <span class="pill-desmontada" hidden>Desmontada</span>
           <h1 class="nombre"></h1>
           <p class="meta"></p>
+          <p class="armado"></p>
         </div>
         <span class="grado grado-hero"></span>
       </div>

@@ -28,9 +28,35 @@ const ICONO_PRESA ='<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 22c-
 // Filtros de la lista: se mantienen al ir y volver de una vía.
 const filtro = { texto: '', sector: '', desmontadas: false };
 
-// Todos los datos vienen en un solo pedido al Apps Script y se guardan acá
-// hasta que alguien escribe algo.
-let cache = null;
+// Todos los datos vienen en un solo pedido al Apps Script. La última copia queda guardada
+// en el navegador: las pantallas se dibujan al instante con ella y se actualizan cuando
+// llega la respuesta nueva.
+const CLAVE_DATOS = 'datos-v1';
+let cache = leerGuardado();
+let cacheJSON = cache && JSON.stringify(cache);
+let pedidoEnCurso = null;
+
+function leerGuardado() {
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE_DATOS));
+  } catch {
+    return null;
+  }
+}
+
+// Devuelve true si los datos cambiaron.
+function guardarDatos(d) {
+  const json = JSON.stringify(d);
+  const cambio = json !== cacheJSON;
+  cache = d;
+  cacheJSON = json;
+  try {
+    localStorage.setItem(CLAVE_DATOS, json);
+  } catch {
+    // Sin espacio o en modo privado: se sigue usando solo la memoria.
+  }
+  return cambio;
+}
 
 async function pedir(opciones) {
   if (!/^https:/.test(window.API_URL)) throw new Error('Falta configurar API_URL en config.js');
@@ -40,30 +66,51 @@ async function pedir(opciones) {
   return data;
 }
 
-async function datos(refrescar = false) {
-  if (!cache || refrescar) cache = await pedir();
-  return cache;
+// Pide los datos al servidor (comparte el pedido si ya hay uno en camino).
+function refrescar() {
+  if (!pedidoEnCurso) {
+    pedidoEnCurso = pedir()
+      .then((d) => ({ datos: d, cambio: guardarDatos(d) }))
+      .finally(() => (pedidoEnCurso = null));
+  }
+  return pedidoEnCurso;
+}
+
+async function datos() {
+  return cache || (await refrescar()).datos;
 }
 
 // text/plain evita el preflight CORS, que Apps Script no responde.
 async function enviar(accion, cuerpo) {
-  const data = await pedir({
+  const { datos: nuevos, ...resultado } = await pedir({
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ accion, ...cuerpo }),
   });
-  cache = null;
-  return data;
+  // Las versiones viejas del script no devuelven los datos: en ese caso se piden aparte.
+  if (nuevos) guardarDatos(nuevos);
+  else await refrescar();
+  return resultado;
 }
 
-function urlFoto(id) {
-  return `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1280`;
+// Actualiza en segundo plano y vuelve a dibujar si cambió algo y el usuario sigue en la misma pantalla.
+function actualizarDetras(vista, redibujar) {
+  refrescar()
+    .then(({ cambio }) => {
+      if (cambio && vista === vistaActual) redibujar();
+    })
+    .catch(() => {});
+}
+
+function urlFoto(id, ancho = 1280) {
+  return `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${ancho}`;
 }
 
 // Resumen de opiniones: promedio sobre el índice de la escala y veredicto.
 function consenso(grado, opiniones) {
   const idx = opiniones.map((g) => GRADOS.indexOf(g)).filter((i) => i >= 0);
-  if (!idx.length) return { votos: 0 };
+  // Un grado marcado que ya no está en la escala (p. ej. un 5b viejo) no se puede comparar.
+  if (!idx.length || !GRADOS.includes(grado)) return { votos: 0 };
   const prom = idx.reduce((a, b) => a + b, 0) / idx.length;
   const diff = prom - GRADOS.indexOf(grado);
   let veredicto = 'justa';
@@ -126,10 +173,8 @@ function plantilla(id) {
   return document.getElementById(id).content.cloneNode(true);
 }
 
-function cargando(tipo) {
-  app.innerHTML = tipo === 'via'
-    ? '<div class="esqueleto-hero"></div>'
-    : '<ul class="grilla">' + '<li class="esqueleto"></li>'.repeat(4) + '</ul>';
+function cargando() {
+  app.innerHTML = '<div class="esqueleto-hero"></div>';
 }
 
 let timerToast;
@@ -160,18 +205,23 @@ function comprimirFoto(file, max = 1280) {
 }
 
 async function vistaLista() {
-  if (!cache) cargando('lista');
-  const { vias: todas, encadenes } = await datos(true);
+  const vista = vistaActual;
   app.replaceChildren(plantilla('t-lista'));
   const ul = document.getElementById('vias');
   const buscar = document.getElementById('buscar');
   const filtros = document.getElementById('filtros');
-  const vias = todas
-    .map((v) => conConsenso(v, encadenes))
-    .sort((a, b) => b.creada.localeCompare(a.creada));
-  const activas = vias.filter((v) => v.activa === '1');
-  app.querySelector('.contador').textContent = plural(activas.length, 'vía activa', 'vías activas');
   buscar.value = filtro.texto;
+  let vias = [];
+
+  function cargar({ vias: todas, encadenes }) {
+    vias = todas
+      .map((v) => conConsenso(v, encadenes))
+      .sort((a, b) => b.creada.localeCompare(a.creada));
+    const activas = vias.filter((v) => v.activa === '1');
+    app.querySelector('.contador').textContent = plural(activas.length, 'vía activa', 'vías activas');
+    pintarFiltros();
+    pintar();
+  }
 
   function pintarFiltros() {
     // Los 4 sectores fijos, más cualquier otro que haya quedado cargado a mano antes.
@@ -189,7 +239,7 @@ async function vistaLista() {
     const activa = filtro.desmontadas ? '0' : '1';
     const filtradas = vias.filter((v) => v.activa === activa &&
       (!filtro.sector || v.sector === filtro.sector) &&
-      normalizar([v.nombre, v.sector, v.color, v.grado].join(' ')).includes(q));
+      normalizar([v.nombre, v.sector, v.color, v.grado, v.armador].join(' ')).includes(q));
 
     if (!filtradas.length) {
       ul.innerHTML = !vias.length
@@ -200,12 +250,12 @@ async function vistaLista() {
     ul.innerHTML = filtradas.map((v) => `
       <li><a href="#/via/${esc(v.id)}" class="tarjeta">
         <div class="tarjeta-foto"${estiloPresa(v.color)}>
-          ${v.foto ? `<img src="${urlFoto(v.foto)}" alt="" loading="lazy">` : `<div class="placeholder">${ICONO_PRESA}</div>`}
+          ${v.foto ? `<img src="${urlFoto(v.foto, 640)}" alt="" loading="lazy">` : `<div class="placeholder">${ICONO_PRESA}</div>`}
           <span class="grado">${esc(v.grado)}</span>
         </div>
         <div class="tarjeta-info">
           <div class="tarjeta-titulo">${colorPresa(v.color) ? `<span class="punto"${estiloPresa(v.color)}></span>` : ''}${esc(v.nombre)}</div>
-          ${v.sector || v.color ? `<div class="tarjeta-sub">${esc([v.sector, v.color].filter(Boolean).join(' · '))}</div>` : ''}
+          ${subtitulo(v) ? `<div class="tarjeta-sub">${esc(subtitulo(v))}</div>` : ''}
           ${veredictoHTML(v)}
         </div>
       </a></li>`).join('');
@@ -223,8 +273,18 @@ async function vistaLista() {
     pintarFiltros();
     pintar();
   });
-  pintarFiltros();
-  pintar();
+
+  if (cache) {
+    cargar(cache);
+    actualizarDetras(vista, () => cargar(cache));
+  } else {
+    ul.innerHTML = '<li class="esqueleto"></li>'.repeat(4);
+    cargar(await datos());
+  }
+}
+
+function subtitulo(v) {
+  return [v.sector, v.color, v.armador && `por ${v.armador}`].filter(Boolean).join(' · ');
 }
 
 function vistaNueva() {
@@ -238,6 +298,11 @@ function vistaNueva() {
 
   form.grado.innerHTML = '<option value="">Elegí…</option>' + GRADOS.map((g) => `<option>${g}</option>`).join('');
   form.sector.innerHTML = '<option value="">Elegí…</option>' + SECTORES.map((s) => `<option>${s}</option>`).join('');
+  form.armador.value = localStorage.getItem('armador') || '';
+  if (cache) {
+    const armadores = [...new Set(cache.vias.map((v) => v.armador).filter(Boolean))].sort();
+    document.getElementById('armadores').innerHTML = armadores.map((a) => `<option value="${esc(a)}">`).join('');
+  }
 
   muestras.innerHTML = COLORES.map(([nombre, , hex]) =>
     `<button type="button" class="muestra" style="--presa:${hex}" data-color="${nombre}" title="${nombre}" aria-label="${nombre}" aria-pressed="false"></button>`
@@ -274,6 +339,9 @@ function vistaNueva() {
     error.textContent = '';
     try {
       const { foto: _, ...valores } = Object.fromEntries(new FormData(form));
+      try {
+        localStorage.setItem('armador', valores.armador.trim());
+      } catch {}
       const { id } = await enviar('crearVia', { ...valores, foto });
       toast('Vía cargada');
       location.hash = `#/via/${id}`;
@@ -286,8 +354,24 @@ function vistaNueva() {
 }
 
 async function vistaVia(id) {
-  if (!cache) cargando('via');
-  const { vias, encadenes } = await datos();
+  const vista = vistaActual;
+  const enCache = cache && cache.vias.some((x) => x.id === id);
+  if (!enCache) {
+    // Sin datos guardados, o un link a una vía que todavía no estaba en la copia local.
+    cargando();
+    await refrescar();
+  }
+  dibujarVia(id);
+  if (enCache) {
+    // No se redibuja si la persona está completando el formulario, para no borrarle lo que escribió.
+    actualizarDetras(vista, () => {
+      if (app.querySelector('#form-encadene')?.hidden !== false) dibujarVia(id);
+    });
+  }
+}
+
+function dibujarVia(id) {
+  const { vias, encadenes } = cache;
   const via = vias.find((x) => x.id === id);
   if (!via) throw new Error('Vía no encontrada');
   const v = conConsenso(via, encadenes);
@@ -306,6 +390,9 @@ async function vistaVia(id) {
   $('.nombre').textContent = v.nombre;
   $('.meta').innerHTML = (hex ? `<span class="punto" style="--presa:${hex}"></span>` : '') +
     esc([v.color, v.sector].filter(Boolean).join(' · '));
+  const cuando = hace(v.creada);
+  $('.armado').textContent = (v.armador ? `Armada por ${v.armador} · ` : 'Armada ') +
+    (/^\d/.test(cuando) ? `el ${cuando}` : cuando);
   $('.grado-hero').textContent = v.grado;
   $('.descripcion').textContent = v.descripcion;
 
@@ -347,7 +434,7 @@ async function vistaVia(id) {
     try {
       await enviar('activa', { via_id: id, activa: !activa });
       toast(activa ? 'Vía marcada como desmontada' : 'Vía activada de nuevo');
-      await vistaVia(id);
+      dibujarVia(id);
     } catch (err) {
       btnActiva.disabled = false;
       btnActiva.textContent = err.message;
@@ -413,7 +500,7 @@ function formularioEncadene(v) {
       localStorage.setItem('escalador', valores.escalador.trim());
       await enviar('encadenar', { ...valores, grado_sugerido: elegido, via_id: v.id });
       toast('¡Gracias! Tu opinión quedó guardada');
-      await vistaVia(v.id);
+      dibujarVia(v.id);
     } catch (err) {
       error.textContent = err.message;
       boton.disabled = false;
@@ -459,7 +546,11 @@ function histograma(v) {
     <div class="leyenda"><span class="l-marcado">Grado marcado</span></div>`;
 }
 
+// Cambia en cada navegación: así una actualización que llega tarde no redibuja otra pantalla.
+let vistaActual = 0;
+
 async function router() {
+  vistaActual++;
   const [, ruta, id] = location.hash.split('/');
   try {
     if (ruta === 'nueva') vistaNueva();
@@ -471,5 +562,58 @@ async function router() {
   window.scrollTo(0, 0);
 }
 
+// Instalación como app. Android y Chrome de escritorio ofrecen el diálogo propio;
+// en iPhone no existe, así que se explica cómo agregarla a la pantalla de inicio.
+function avisoInstalar() {
+  const aviso = document.getElementById('instalar');
+  const texto = aviso.querySelector('.instalar-texto');
+  const boton = document.getElementById('btn-instalar');
+  const instalada = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const descartado = () => {
+    try {
+      return localStorage.getItem('instalar-descartado') === '1';
+    } catch {
+      return false;
+    }
+  };
+  if (instalada || descartado()) return;
+
+  document.getElementById('btn-cerrar-instalar').addEventListener('click', () => {
+    aviso.hidden = true;
+    try {
+      localStorage.setItem('instalar-descartado', '1');
+    } catch {}
+  });
+
+  let pedidoInstalar = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    pedidoInstalar = e;
+    texto.textContent = 'Instalá la app para abrirla más rápido desde el celular.';
+    boton.hidden = false;
+    aviso.hidden = false;
+  });
+  boton.addEventListener('click', async () => {
+    if (!pedidoInstalar) return;
+    pedidoInstalar.prompt();
+    const { outcome } = await pedidoInstalar.userChoice;
+    pedidoInstalar = null;
+    if (outcome === 'accepted') aviso.hidden = true;
+  });
+  window.addEventListener('appinstalled', () => (aviso.hidden = true));
+
+  const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (esIOS) {
+    texto.innerHTML = 'Para instalarla: tocá <b>Compartir</b> <span aria-hidden="true">⬆︎</span> y después <b>Agregar a inicio</b>.';
+    aviso.hidden = false;
+  }
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+avisoInstalar();
 window.addEventListener('hashchange', router);
 router();

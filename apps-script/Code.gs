@@ -3,36 +3,55 @@
 
 // Tiene que coincidir con grados.js del frontend.
 const GRADOS = [
-  '4', '4+', '5a', '5a+', '5b', '5b+', '5c', '5c+',
+  '4', '4+', '5', '5+',
   '6a', '6a+', '6b', '6b+', '6c', '6c+',
   '7a', '7a+', '7b', '7b+', '7c', '7c+',
   '8a', '8a+', '8b', '8b+', '8c', '8c+', '9a',
 ];
+// Las columnas nuevas van siempre al final, para no correr las que ya tiene la planilla.
 const COLUMNAS = {
-  vias: ['id', 'nombre', 'sector', 'color', 'grado', 'descripcion', 'foto', 'activa', 'creada'],
+  vias: ['id', 'nombre', 'sector', 'color', 'grado', 'descripcion', 'foto', 'activa', 'creada', 'armador'],
   encadenes: ['id', 'via_id', 'escalador', 'estilo', 'grado_sugerido', 'comentario', 'fecha'],
 };
 const CARPETA_FOTOS = 'Grados del gimnasio - fotos';
+const CLAVE_CACHE = 'datos';
 
 // Devuelve todo de una vez: son pocos datos y así la página hace un solo pedido.
+// Se guarda en caché para no leer la planilla en cada visita; cualquier escritura la renueva.
 function doGet() {
-  return responder(() => ({ vias: leer('vias'), encadenes: leer('encadenes') }));
+  return responder(() => {
+    const guardado = CacheService.getScriptCache().get(CLAVE_CACHE);
+    return guardado ? JSON.parse(guardado) : todo();
+  });
 }
 
+// Cada escritura devuelve también los datos actualizados, así la página no hace un segundo pedido.
 function doPost(e) {
   return responder(() => {
     const b = JSON.parse(e.postData.contents);
     const lock = LockService.getScriptLock();
     lock.waitLock(15000);
     try {
-      if (b.accion === 'crearVia') return crearVia(b);
-      if (b.accion === 'encadenar') return encadenar(b);
-      if (b.accion === 'activa') return cambiarActiva(b);
-      throw new Error('Acción desconocida');
+      let resultado;
+      if (b.accion === 'crearVia') resultado = crearVia(b);
+      else if (b.accion === 'encadenar') resultado = encadenar(b);
+      else if (b.accion === 'activa') resultado = cambiarActiva(b);
+      else throw new Error('Acción desconocida');
+      return { ...resultado, datos: todo() };
     } finally {
       lock.releaseLock();
     }
   });
+}
+
+function todo() {
+  const datos = { vias: leer('vias'), encadenes: leer('encadenes') };
+  const json = JSON.stringify(datos);
+  // La caché de Apps Script acepta hasta 100 KB por valor; si hay más datos, se lee siempre de la planilla.
+  const cache = CacheService.getScriptCache();
+  if (json.length < 95000) cache.put(CLAVE_CACHE, json, 21600);
+  else cache.remove(CLAVE_CACHE);
+  return datos;
 }
 
 // Corré esta función una vez desde el editor para crear las hojas y dar los permisos.
@@ -59,6 +78,9 @@ function hoja(nombre) {
     h = ss.insertSheet(nombre);
     h.appendRow(COLUMNAS[nombre]);
     h.setFrozenRows(1);
+  } else if (h.getLastColumn() < COLUMNAS[nombre].length) {
+    // Planilla creada con una versión anterior: se agregan los encabezados que falten.
+    h.getRange(1, 1, 1, COLUMNAS[nombre].length).setValues([COLUMNAS[nombre]]);
   }
   return h;
 }
@@ -94,6 +116,7 @@ function crearVia(b) {
     foto: guardarFoto(b.foto, id),
     activa: 1,
     creada: new Date().toISOString(),
+    armador: texto(b.armador, 60),
   }));
   return { id };
 }
