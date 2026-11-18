@@ -406,6 +406,11 @@ function dibujarVia(id) {
     $('.hero-foto').src = urlFoto(v.foto);
     $('.hero-foto').hidden = false;
     hero.classList.add('con-foto');
+    $('.hero-ampliar').hidden = false;
+    // Tocar la foto (salvo la flecha de volver) la abre completa.
+    hero.addEventListener('click', (e) => {
+      if (!e.target.closest('.hero-volver')) abrirFoto(v.foto);
+    });
   }
   $('.pill-desmontada').hidden = v.activa === '1';
   $('.nombre').textContent = v.nombre;
@@ -591,7 +596,31 @@ function histograma(v) {
 // Cambia en cada navegación: así una actualización que llega tarde no redibuja otra pantalla.
 let vistaActual = 0;
 
+// Visor de la foto a pantalla completa. Muestra al toque la versión que ya está
+// cargada y la cambia por una más grande cuando llega. Se cierra tocando, con
+// Escape o con el botón atrás del celular (por eso suma una entrada al historial).
+const visor = document.getElementById('visor');
+function abrirFoto(id) {
+  const img = visor.querySelector('img');
+  img.src = urlFoto(id);
+  const grande = new Image();
+  grande.onload = () => {
+    if (visor.open) img.src = grande.src;
+  };
+  grande.src = urlFoto(id, 2400);
+  visor.showModal();
+  history.pushState({ visor: true }, '');
+}
+visor.addEventListener('click', () => visor.close());
+visor.addEventListener('close', () => {
+  if (history.state?.visor) history.back();
+});
+window.addEventListener('popstate', () => {
+  if (visor.open) visor.close();
+});
+
 async function router() {
+  if (visor.open) visor.close();
   vistaActual++;
   const [, ruta, id] = location.hash.split('/');
   try {

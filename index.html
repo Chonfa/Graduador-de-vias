@@ -35,6 +35,10 @@
     <button type="button" class="instalar-cerrar" id="btn-cerrar-instalar" aria-label="Cerrar">×</button>
   </div>
   <main id="app"></main>
+  <dialog id="visor" class="visor" aria-label="Foto de la vía">
+    <img alt="Inicio de la vía">
+    <button type="button" class="visor-cerrar" aria-label="Cerrar">×</button>
+  </dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 
   <template id="t-lista">
@@ -84,6 +88,9 @@
       <div class="hero">
         <img class="hero-foto" hidden alt="Inicio de la vía">
         <a href="#/" class="hero-volver" aria-label="Volver">←</a>
+        <button type="button" class="hero-ampliar" hidden aria-label="Ver la foto completa">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+        </button>
         <div class="hero-texto">
           <span class="pill-desmontada" hidden>Desmontada</span>
           <h1 class="nombre"></h1>

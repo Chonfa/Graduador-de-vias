@@ -346,3 +346,25 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 .estrella.llena { color: var(--estrella); }
 .estrella:active { transform: scale(.9); }
+
+/* Foto completa */
+.hero.con-foto { cursor: zoom-in; }
+.hero-ampliar {
+  position: absolute !important; top: 14px; right: 14px;
+  display: grid; place-items: center; width: 40px; height: 40px; padding: 0;
+  border: 0; border-radius: 50%; background: rgb(0 0 0 / .45); color: #fff;
+  backdrop-filter: blur(6px); cursor: pointer;
+}
+.hero-ampliar svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.visor {
+  width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0;
+  border: 0; background: #000; cursor: zoom-out;
+}
+.visor::backdrop { background: #000; }
+.visor img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.visor-cerrar {
+  position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px;
+  width: 44px; height: 44px; border: 0; border-radius: 50%;
+  background: rgb(255 255 255 / .18); color: #fff; font-size: 1.8rem; line-height: 1; cursor: pointer;
+}
+.visor-cerrar:focus:not(:focus-visible) { outline: none; }
