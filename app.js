@@ -247,7 +247,7 @@ async function vistaLista() {
     if (filtro.sector && !sectores.includes(filtro.sector)) filtro.sector = '';
     const boton = (valor, texto) =>
       `<button type="button" class="filtro" data-sector="${esc(valor)}" aria-pressed="${filtro.sector === valor}">${esc(texto)}</button>`;
-    filtros.innerHTML = boton('', 'Todas') + sectores.map((s) => boton(s, s)).join('') +
+    filtros.innerHTML = sectores.map((s) => boton(s, s)).join('') +
       `<button type="button" class="filtro secundario" data-desmontadas aria-pressed="${filtro.desmontadas}">Desmontadas</button>`;
   }
 
@@ -289,7 +289,8 @@ async function vistaLista() {
     const b = e.target.closest('.filtro');
     if (!b) return;
     if (b.hasAttribute('data-desmontadas')) filtro.desmontadas = !filtro.desmontadas;
-    else filtro.sector = b.dataset.sector;
+    // Tocar el sector elegido lo desmarca y vuelven a verse todas.
+    else filtro.sector = filtro.sector === b.dataset.sector ? '' : b.dataset.sector;
     pintarFiltros();
     pintar();
   });
